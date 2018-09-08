@@ -14,11 +14,11 @@ let height = 600
 
 const PIECES_PER_INDIVIDUAL = 10000
 const FPS_AVERAGING = 1000
-const EVALUATOR_THREADS_NUM = 6
+const EVALUATOR_THREADS_NUM = 10
 
 init_window(width.cint, height.cint, "AutoTetris")
 
-set_target_FPS(60)
+set_target_FPS(120)
 
 var field = new_field(10, 20, 24)
 var count = 0
@@ -27,16 +27,15 @@ var move_count = 0
 #var current_generation = guided_generation(@[5.0, -2.8, -1.2, -0.7, -0.7, -0.8, 0.0, 0.0, 0.0, 1.5, 1.2, 0.5])
 var current_generation = random_generation()
 var current_generation_n = 0
-var current_individual = 0
-var current_piece_count = 0
+var evaluated_count = 0
 
 var absolute_max = 0
 var generation_max = 0
 var generation_avg = 0.0
 var mutants_avg = 0.0
 var mutants_num = 0
-var generation_best: seq[float] = @[]
-var absolute_best: seq[float] = @[]
+var generation_best = random_individual()
+var absolute_best = random_individual()
 
 var turbo_mode = false
 
@@ -44,12 +43,6 @@ var fitness_graph = new_graph(100, 360, 160)
 let max_series = fitness_graph.add_series(RED)
 let avg_series = fitness_graph.add_series(DARKGREEN)
 let mut_series = fitness_graph.add_series(ORANGE)
-
-var fps_avg = 0.0
-var fps_sum = 0.0
-var fps_count = 0
-
-var last_fps = 60
 
 var to_evaluate: Channel[tuple[id: int, individual: Individual]]
 var evaluated: Channel[tuple[id: int, score: int]]
@@ -96,6 +89,20 @@ echo "starting evaluator threads"
 for i in 0..<EVALUATOR_THREADS_NUM:
   evaluator_threads[i].create_thread(evaluator_thread, i)
 
+proc launch_evaluation() =
+  echo "launching evaluation"
+
+  evaluated_count = 0
+
+  for i in 0..<GENERATION_SIZE:
+    var job: tuple[id: int, individual: Individual]
+    job.id = i
+    job.individual = current_generation[i]
+
+    to_evaluate.send job
+
+launch_evaluation()
+
 while window_should_close() == 0:
 
   if key_down(KEY_LEFT) != 0:
@@ -121,23 +128,16 @@ while window_should_close() == 0:
   if key_pressed(KEY_UP) != 0:
     field.rotate_current_piece()
 
-  var slide_speed = 2
-  var fps = 60
+  var slide_speed = 5
 
   if key_down(KEY_DOWN) != 0:
     slide_speed = 0
-    fps = 10000
 
   if key_pressed(KEY_T) != 0:
     turbo_mode = not turbo_mode
 
   if turbo_mode:
     slide_speed = 0
-    fps = 10000
-
-  if fps != last_fps:
-    set_target_FPS(fps.cint)
-    last_fps = fps
 
   count += 1
   if count >= slide_speed:
@@ -145,65 +145,59 @@ while window_should_close() == 0:
     field.slide()
 
   if field.new_piece and not field.lost:
-    current_piece_count += 1
     field.new_piece = false
 
     try:
-      let ai_move = field.ai_move(current_generation[current_individual].genome)
+      let ai_move = field.ai_move(absolute_best.genome)
 
       field.current_piece = ai_move.piece
       field.current_piece_x = ai_move.x
     except:
       field.lost = true
 
-  if field.lost or current_piece_count >= PIECES_PER_INDIVIDUAL:
-    current_generation[current_individual].score = field.get_score()
+  if field.lost:
+    field.reset()
 
-    if field.get_score() > generation_max:
-      generation_max = field.get_score()
-      generation_best = current_generation[current_individual].genome
-      echo "new GENERATION best: ", generation_best
+  let maybe_result = evaluated.try_recv()
+  if maybe_result.data_available:
+    evaluated_count += 1
+
+    let result = maybe_result.msg
+
+    current_generation[result.id].score = result.score
+
+    if result.score > generation_max:
+      generation_max = result.score
+      generation_best = current_generation[result.id]
 
       if generation_max > absolute_max:
         absolute_max = generation_max
         absolute_best = generation_best
         echo "new ABSOLUTE best: ", absolute_best
 
-    generation_avg += field.get_score().float / GENERATION_SIZE.float
+    generation_avg += result.score.float / GENERATION_SIZE.float
 
-    if current_generation[current_individual].mutated:
-      mutants_avg += field.get_score().float
+    if current_generation[result.id].mutated:
+      mutants_avg += result.score.float
       mutants_num += 1
 
-    current_individual += 1
-    current_piece_count = 0
+  if evaluated_count >= GENERATION_SIZE:
+    current_generation = current_generation.next_generation()
+    current_generation_n += 1
 
-    field.reset()
+    fitness_graph.push(max_series, generation_max.float)
+    fitness_graph.push(avg_series, generation_avg.float)
+    if mutants_num > 0:
+      fitness_graph.push(mut_series, mutants_avg / mutants_num.float)
+    else:
+      fitness_graph.push(mut_series, 0)
 
-    if current_individual >= GENERATION_SIZE:
-      current_generation = current_generation.next_generation()
-      current_generation_n += 1
-      current_individual = 0
+    generation_max = 0
+    generation_avg = 0.0
+    mutants_avg = 0.0
+    mutants_num = 0
 
-      fitness_graph.push(max_series, generation_max.float)
-      fitness_graph.push(avg_series, generation_avg.float)
-      if mutants_num > 0:
-        fitness_graph.push(mut_series, mutants_avg / mutants_num.float)
-      else:
-        fitness_graph.push(mut_series, 0)
-
-      generation_max = 0
-      generation_avg = 0.0
-      mutants_avg = 0.0
-      mutants_num = 0
-
-  fps_sum += get_fps().float
-  fps_count += 1
-
-  if fps_count >= FPS_AVERAGING:
-    fps_avg = fps_sum / FPS_AVERAGING.float
-    fps_sum = 0.0
-    fps_count = 0
+    launch_evaluation()
 
   begin_drawing()
 
@@ -214,18 +208,14 @@ while window_should_close() == 0:
 
     draw_text("AutoTetris", 60, 20, 20, GRAY)
     draw_text($field.get_score(), 220, 20, 20, GRAY)
-    draw_text("FPS " & $fps_avg.int, 360, 20, 20, GRAY)
+    draw_text("FPS " & $get_fps(), 360, 20, 20, GRAY)
 
     draw_text("Generation " & $current_generation_n, 360, 60, 20, GRAY)
-    if current_generation[current_individual].mutated:
-      draw_text("Individual " & $current_individual & " (mutant)", 360, 90, 20, GRAY)
-    else:
-      draw_text("Individual " & $current_individual, 360, 90, 20, GRAY)
-    draw_text("Pieces #n  " & $current_piece_count, 360, 120, 20, GRAY)
+    draw_text("Evaluating " & $evaluated_count & "/" & $GENERATION_SIZE & " (" & $EVALUATOR_THREADS_NUM & " threads)", 360, 90, 20, GRAY)
 
-    draw_text("Gen max " & $generation_max, 360, 170, 20, GRAY)
-    draw_text("Abs max " & $absolute_max, 360, 200, 20, GRAY)
+    draw_text("Gen max " & $generation_max, 360, 140, 20, GRAY)
+    draw_text("Abs max " & $absolute_max, 360, 170, 20, GRAY)
 
-    fitness_graph.draw(360, 250)
+    fitness_graph.draw(360, 220)
 
   end_drawing()

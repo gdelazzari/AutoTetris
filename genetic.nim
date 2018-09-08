@@ -56,10 +56,11 @@ proc guided_generation*(genome: seq[float]): Generation =
 proc breed(a, b: seq[float]): seq[float] =
   result = @[]
 
-  let cut_at = 1 + rand(a.len - 3)
+  let cut_1 = rand((a.high.float * 0.75).floor.int)
+  let cut_2 = cut_1 + 1 + rand(a.high - cut_1 - 1)
 
   for i in 0..<GENOME_LENGTH:
-    if i < cut_at:
+    if i < cut_1 or i >= cut_2:
       result.add (a[i] * 0.95 + b[i] * 0.05)
     else:
       result.add (a[i] * 0.05 + b[i] * 0.95)
