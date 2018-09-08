@@ -171,9 +171,9 @@ proc holes*[T](f: T): int =
 proc covered_holes*[T](f: T, genome: seq[float]): float =
   result = 0
 
-  let empty_weight = genome[9]
-  let cover_weight = genome[10]
-  let height_multiplier = genome[11]
+  let empty_weight = genome[14]
+  let cover_weight = genome[15]
+  let height_multiplier = genome[16]
 
   for c in 0..<f.columns:
     var found_empty = false
@@ -267,25 +267,23 @@ proc calculate_score(s: Scenario, f: TetrisField, genome: seq[float]): float =
 
   let cs = cleared.scenario
   result += genome[1] * cs.max_height.float / f.rows.float * 2
-  result += genome[2] * cs.holes.float
-  result += genome[3] * cs.dirty_fill
-  result += genome[4] * cs.covered_holes(genome)
-  result += genome[5] * cs.bumpiness
-  result += (genome[6] * 0.1) * (s.x.float / 4.5 - 1.0 + genome[7])
-  result += (genome[8] * 0.1) * abs(s.x.float - 4.5) / 4.5
+  result += genome[2] * (f.max_height - cs.max_height).float
+  result += genome[3] * cs.holes.float
+  result += genome[4] * (f.holes - cs.holes).float
+  result += genome[5] * cs.dirty_fill
+  result += genome[6] * (f.dirty_fill - cs.dirty_fill)
+  result += genome[7] * cs.covered_holes(genome)
+  result += genome[8] * (f.covered_holes(genome) - cs.covered_holes(genome))
+  result += genome[9] * cs.bumpiness
+  result += genome[10] * (f.bumpiness - cs.bumpiness)
+  result += (genome[11] * 0.1) * (s.x.float / 4.5 - 1.0 + genome[12])
+  result += (genome[13] * 0.1) * abs(s.x.float - 4.5) / 4.5
 
 proc best_scenario(scenarios: seq[Scenario], f: TetrisField, genome: seq[float]): Scenario =
-  #echo "calculating scores for ", scenarios.len, " scenarios"
-
   for s in scenarios:
     s.score = s.calculate_score(f, genome)
-    #print_scenario s
 
   let best = scenarios.sorted do (x, y: Scenario) -> int: return cmp(x.score, y.score)
-
-  #echo "sorted scores:"
-  #for s in best:
-  #  echo s.score
 
   return best[best.len - 1]
 
@@ -295,15 +293,9 @@ type AIMove = object
   piece*: Piece
 
 proc ai_move*(f: TetrisField, genome: seq[float]): AIMove =
-  #echo "finding scenarios for AI move with piece:"
-  #print_piece f.current_piece
-
   let scenarios = f.get_scenarios()
 
   let best = scenarios.best_scenario(f, genome)
-
-  #echo "best scenario:"
-  #print_scenario best
 
   if best == nil:
     result.rotations = 0

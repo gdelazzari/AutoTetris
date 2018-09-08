@@ -32,6 +32,10 @@ suite "AI tests":
     check field.max_height == 3
     field.cells[10][5] = true
     check field.max_height == 10
+    field.cells[1][1] = true
+    check field.max_height == 19
+    field.cells[0][2] = true
+    check field.max_height == 20
 
   test "row_fill":
     for r in 0..19:

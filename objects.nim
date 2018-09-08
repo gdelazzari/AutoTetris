@@ -1,3 +1,5 @@
+{.reorder: on.}
+
 import sequtils
 import random
 import raylib
@@ -38,24 +40,6 @@ proc relevance*(p: Piece): int =
       if p.form[py][px]:
         result += 1
 
-let PieceL1 = Piece(type_hint: L, form: [[false, false, false, false], [false, false, false, true], [false, true, true, true], [false, false, false, false]])
-let PieceL2 = Piece(type_hint: L, form: [[false, false, false, false], [false, true, true, true], [false, false, false, true], [false, false, false, false]])
-let PieceZ1 = Piece(type_hint: Z, form: [[false, false, false, false], [false, true, false, false], [false, true, true, false], [false, false, true, false]])
-let PieceZ2 = Piece(type_hint: Z, form: [[false, false, false, false], [false, false, true, false], [false, true, true, false], [false, true, false, false]])
-let PieceT = Piece(type_hint: T, form: [[false, false, false, false], [false, false, false, false], [false, false, true, false], [false, true, true, true]])
-let PieceI = Piece(type_hint: I, form: [[false, false, false, false], [false, false, false, false], [true, true, true, true], [false, false, false, false]])
-let PieceQ = Piece(type_hint: Q, form: [[false, false, false, false], [false, true, true, false], [false, true, true, false], [false, false, false, false]])
-
-let PIECES = [
-  PieceL1,
-  PieceL2,
-  PieceZ1,
-  PieceZ2,
-  PieceT,
-  PieceI,
-  PieceQ
-]
-
 let FIELD_BORDER_WIDTH = 4
 
 type TetrisField* = ref object
@@ -76,6 +60,10 @@ proc new_field*(columns, rows, cell_size: int): TetrisField =
   result.rows = rows
   result.cell_size = cell_size
   result.cells = false.repeat(columns).repeat(rows)
+  result.current_piece = pick_random_piece()
+  result.current_piece_y = 1
+  result.current_piece_x = 5
+  result.new_piece = true
 
 proc draw*(f: TetrisField; x, y: int) =
   let width = f.columns * f.cell_size
@@ -198,6 +186,24 @@ proc check_valid_pos*(f: TetrisField; p: Piece; x, y: int): bool =
   return true
 
 proc pick_random_piece(): Piece =
+  let PieceL1 = Piece(type_hint: L, form: [[false, false, false, false], [false, false, false, true], [false, true, true, true], [false, false, false, false]])
+  let PieceL2 = Piece(type_hint: L, form: [[false, false, false, false], [false, true, true, true], [false, false, false, true], [false, false, false, false]])
+  let PieceZ1 = Piece(type_hint: Z, form: [[false, false, false, false], [false, true, false, false], [false, true, true, false], [false, false, true, false]])
+  let PieceZ2 = Piece(type_hint: Z, form: [[false, false, false, false], [false, false, true, false], [false, true, true, false], [false, true, false, false]])
+  let PieceT = Piece(type_hint: T, form: [[false, false, false, false], [false, false, false, false], [false, false, true, false], [false, true, true, true]])
+  let PieceI = Piece(type_hint: I, form: [[false, false, false, false], [false, false, false, false], [true, true, true, true], [false, false, false, false]])
+  let PieceQ = Piece(type_hint: Q, form: [[false, false, false, false], [false, true, true, false], [false, true, true, false], [false, false, false, false]])
+
+  let PIECES = [
+    PieceL1,
+    PieceL2,
+    PieceZ1,
+    PieceZ2,
+    PieceT,
+    PieceI,
+    PieceQ
+  ]
+
   result = PIECES[rand(PIECES.len - 1)].make_copy
 
 proc merge_piece(f: TetrisField) =

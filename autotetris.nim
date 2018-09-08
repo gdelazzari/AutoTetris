@@ -12,8 +12,9 @@ randomize()
 let width = 800
 let height = 600
 
-let PIECES_PER_INDIVIDUAL = 10000
-let FPS_AVERAGING = 1000
+const PIECES_PER_INDIVIDUAL = 10000
+const FPS_AVERAGING = 1000
+const EVALUATOR_THREADS_NUM = 6
 
 init_window(width.cint, height.cint, "AutoTetris")
 
@@ -49,6 +50,51 @@ var fps_sum = 0.0
 var fps_count = 0
 
 var last_fps = 60
+
+var to_evaluate: Channel[tuple[id: int, individual: Individual]]
+var evaluated: Channel[tuple[id: int, score: int]]
+
+var evaluator_threads: array[EVALUATOR_THREADS_NUM, Thread[int]]
+
+proc evaluator_thread(num: int) {.thread.} =
+  echo "[thread #", num, "] evaluator thread started"
+
+  while true:
+    let job = to_evaluate.recv()
+
+    echo "[thread #", num, "] new job (id=", job.id, ")"
+
+    var field = new_field(10, 20, 0)
+    var piece_count = 0
+
+    while not field.lost and piece_count < PIECES_PER_INDIVIDUAL:
+      if field.new_piece:
+        piece_count += 1
+        field.new_piece = false
+
+        try:
+          let ai_move = field.ai_move(job.individual.genome)
+
+          field.current_piece = ai_move.piece
+          field.current_piece_x = ai_move.x
+        except:
+          field.lost = true
+
+      field.slide()
+
+    var result: tuple[id: int, score: int]
+    result.id = job.id
+    result.score = field.get_score
+
+    evaluated.send result
+
+echo "initializing threads channels"
+to_evaluate.open()
+evaluated.open()
+
+echo "starting evaluator threads"
+for i in 0..<EVALUATOR_THREADS_NUM:
+  evaluator_threads[i].create_thread(evaluator_thread, i)
 
 while window_should_close() == 0:
 
@@ -145,7 +191,7 @@ while window_should_close() == 0:
         fitness_graph.push(mut_series, mutants_avg / mutants_num.float)
       else:
         fitness_graph.push(mut_series, 0)
-      
+
       generation_max = 0
       generation_avg = 0.0
       mutants_avg = 0.0
