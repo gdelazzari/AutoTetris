@@ -14,13 +14,13 @@ randomize()
 let width = 800
 let height = 600
 
-let   EVALUATOR_THREADS_NUM = (count_processors() - 1) * 2
+let   EVALUATOR_THREADS_NUM = count_processors()
 const PIECES_PER_INDIVIDUAL = 10000
 const NUM_MATCHES_PER_INDIV = 5
 
 init_window(width.cint, height.cint, "AutoTetris")
 
-set_target_FPS(120)
+set_target_FPS(30)
 
 var field = new_field(10, 20, 24, rand(int.high))
 var count = 0
@@ -141,6 +141,7 @@ while window_should_close() == false:
     field.rotate_current_piece()
 
   var slide_speed = 5
+  var simulation_steps = 1
 
   if is_key_down(KeyboardKey.Down):
     slide_speed = 0
@@ -150,25 +151,27 @@ while window_should_close() == false:
 
   if turbo_mode:
     slide_speed = 0
+    simulation_steps = 5
 
-  count += 1
-  if count >= slide_speed:
-    count = 0
-    field.slide()
+  for i in 0..simulation_steps:
+    count += 1
+    if count >= slide_speed:
+      count = 0
+      field.slide()
 
-  if field.new_piece and not field.lost:
-    field.new_piece = false
+    if field.new_piece and not field.lost:
+      field.new_piece = false
 
-    try:
-      let ai_move = field.ai_move(absolute_best.genome)
+      try:
+        let ai_move = field.ai_move(absolute_best.genome)
 
-      field.current_piece = ai_move.piece
-      field.current_piece_x = ai_move.x
-    except:
-      field.lost = true
+        field.current_piece = ai_move.piece
+        field.current_piece_x = ai_move.x
+      except:
+        field.lost = true
 
-  if field.lost:
-    field.reset()
+    if field.lost:
+      field.reset()
 
   let maybe_result = evaluated.try_recv()
   if maybe_result.data_available:
