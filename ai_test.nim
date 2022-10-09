@@ -11,7 +11,7 @@ proc similar(value: float, to: float): bool =
     echo "got ", value, ", expected ", to
 
 suite "AI tests":
-  var field = new_field(10, 20, 1)
+  var field = new_field(10, 20, 1, 0)
 
   setup:
     field.reset()

@@ -1,4 +1,4 @@
-import raylib
+import nimraylib_now
 
 let GRAPH_BORDER_WIDTH = 2
 

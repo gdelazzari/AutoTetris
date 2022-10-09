@@ -69,11 +69,11 @@ proc breed(a, b: seq[float]): seq[float] =
       result.add (a[i] * 0.05 + b[i] * 0.95)
 
 proc pick_individuals(pool: seq[int]): tuple[a: int, b: int] =
-  let a = pool.rand
+  let a = pool[rand(pool.low .. pool.high)]
 
   var b = a
   while b == a:
-    b = pool.rand
+    b = pool[rand(pool.low .. pool.high)]
 
   return (a, b)
 

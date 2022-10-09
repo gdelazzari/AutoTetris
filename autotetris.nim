@@ -1,4 +1,4 @@
-import raylib
+import nimraylib_now
 import random
 
 import objects
@@ -91,7 +91,7 @@ evaluated.open()
 echo "starting evaluator threads"
 for i in 0..<EVALUATOR_THREADS_NUM:
   var t: Thread[int]
-  evaluator_threads.add t
+  evaluator_threads.add (move t)
 
 for i in 0..<EVALUATOR_THREADS_NUM:
   evaluator_threads[i].create_thread(evaluator_thread, i)
@@ -115,14 +115,14 @@ proc launch_evaluation() =
 
 launch_evaluation()
 
-while window_should_close() == 0:
+while window_should_close() == false:
 
-  if key_down(KEY_LEFT) != 0:
+  if is_key_down(KeyboardKey.Left):
     if move_count == 0:
       move_count = 2000
     else:
       move_count += 1
-  elif key_down(KEY_RIGHT) != 0:
+  elif is_key_down(KeyboardKey.Right):
     if move_count == 0:
       move_count = 2000
     else:
@@ -131,21 +131,21 @@ while window_should_close() == 0:
     move_count = 0
 
   if move_count >= 8:
-    if key_down(KEY_LEFT) != 0:
+    if is_key_down(KeyboardKey.Left):
       field.move_current_piece(-1)
-    elif key_down(KEY_RIGHT) != 0:
+    elif is_key_down(KeyboardKey.Right):
       field.move_current_piece(1)
     move_count = 1
 
-  if key_pressed(KEY_UP) != 0:
+  if is_key_pressed(KeyboardKey.Up):
     field.rotate_current_piece()
 
   var slide_speed = 5
 
-  if key_down(KEY_DOWN) != 0:
+  if is_key_down(KeyboardKey.Down):
     slide_speed = 0
 
-  if key_pressed(KEY_T) != 0:
+  if is_key_pressed(KeyboardKey.T):
     turbo_mode = not turbo_mode
 
   if turbo_mode:
