@@ -4,13 +4,16 @@ import algorithm
 import math
 import random
 
-let GENOME_LENGTH* = 17
-let GENERATION_SIZE* = 20
+const GENOME_LENGTH* = 17
+const GENERATION_SIZE* = 20
 
-let MUTATION_INDIVIDUALS_PERCENT = 0.35
-let MUTATION_GENES_PERCENT = 0.25
-let MUTATION_ADD_RANGE = 0.75
-let MUTATION_MUL_RANGE = 2.0
+const MUTATION_INDIVIDUALS_PERCENT = 0.35
+const MUTATION_GENES_PERCENT = 0.25
+const MUTATION_ADD_RANGE = 0.75
+const MUTATION_MUL_RANGE = 2.0
+
+randomize()
+var rng = init_rand(rand(int.high))
 
 type Individual* = object
   genome*: seq[float]
@@ -24,12 +27,12 @@ proc random_individual*(): Individual =
   result.genome = @[]
   result.mutated = false
   for i in 0..<GENOME_LENGTH:
-    result.genome.add (rand(2.0) - 1.0)
+    result.genome.add (rng.rand(2.0) - 1.0)
 
 proc guided_individual*(genome: seq[float]): Individual =
   result.score = 0
 
-  if rand(1.0) <= MUTATION_INDIVIDUALS_PERCENT:
+  if rng.rand(1.0) <= MUTATION_INDIVIDUALS_PERCENT:
     result.genome = genome.mutate
     result.mutated = true
   else:
@@ -56,8 +59,8 @@ proc guided_generation*(genome: seq[float]): Generation =
 proc breed(a, b: seq[float]): seq[float] =
   result = @[]
 
-  let cut_1 = rand((a.high.float * 0.75).floor.int)
-  let cut_2 = cut_1 + 1 + rand(a.high - cut_1 - 1)
+  let cut_1 = rng.rand((a.high.float * 0.75).floor.int)
+  let cut_2 = cut_1 + 1 + rng.rand(a.high - cut_1 - 1)
 
   for i in 0..<GENOME_LENGTH:
     if i < cut_1 or i >= cut_2:
@@ -78,14 +81,14 @@ proc mutate(genome: seq[float]): seq[float] =
   result = @[]
 
   for i in 0..<genome.len:
-    if rand(1.0) <= MUTATION_GENES_PERCENT:
+    if rng.rand(1.0) <= MUTATION_GENES_PERCENT:
       var mutated = genome[i]
       let kind = rand(1)
 
       if kind == 0:
-        mutated += rand(MUTATION_ADD_RANGE * 2) - MUTATION_ADD_RANGE
+        mutated += rng.rand(MUTATION_ADD_RANGE * 2) - MUTATION_ADD_RANGE
       elif kind == 1:
-        mutated *= rand(MUTATION_MUL_RANGE * 2) - MUTATION_MUL_RANGE
+        mutated *= rng.rand(MUTATION_MUL_RANGE * 2) - MUTATION_MUL_RANGE
 
       result.add mutated
     else:
@@ -127,7 +130,7 @@ proc next_generation*(previous: Generation): Generation =
     var child_genome = breed(previous[parents.a].genome, previous[parents.b].genome)
 
     var mutated = false
-    if rand(1.0) <= MUTATION_INDIVIDUALS_PERCENT:
+    if rng.rand(1.0) <= MUTATION_INDIVIDUALS_PERCENT:
       child_genome = child_genome.mutate
       mutated = true
       mutations += 1

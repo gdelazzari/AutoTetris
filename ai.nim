@@ -50,28 +50,29 @@ proc print_scenario*(f: Scenario) =
   echo "'".repeat(f.columns), "score=", f.score
 
 proc merge_piece[T](f: T; p: Piece; x, y: int) =
-  discard
-    """
-    echo "merging piece"
-    print_piece p
-
-    echo "at ", x, ",", y
-
-    echo "in:"
-    print_field f
-    """
-
   for px in 0..3:
     for py in 0..3:
       let fx = (px - 2) + x
       let fy = (py - 2) + y
-      if p.form[py][px]:
+      if p.form[py][px] and fy >= 0:
         f.cells[fy][fx] = true
+
+proc check_valid_x_pos(f: TetrisField, p: Piece, x: int): bool =
+  for px in 0..3:
+    for py in 0..3:
+      let fx = (px - 2) + x
+      if p.form[py][px]:
+        if fx < 0:
+          return false
+        elif fx > f.columns - 1:
+          return false
+
+  return true
 
 proc get_scenario(f: TetrisField, p: Piece, x: int): Scenario =
   result = new Scenario
   result.x = x
-  result.piece = p.make_copy
+  result.piece = p
   result.rows = f.rows
   result.columns = f.columns
 
@@ -88,7 +89,7 @@ proc get_x_scenarios(f: TetrisField, p: Piece): seq[Scenario] =
   result = @[]
 
   for x in -2..<f.columns+2:
-    if f.check_valid_pos(p, x, 3):
+    if f.check_valid_x_pos(p, x):
       valid_x.add x
 
   for x in valid_x:

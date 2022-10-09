@@ -1,5 +1,3 @@
-{.reorder: on.}
-
 import sequtils
 import random
 import raylib
@@ -53,14 +51,16 @@ type TetrisField* = ref object
   score: int
   new_piece*: bool
   lost*: bool
+  rng: Rand
 
-proc new_field*(columns, rows, cell_size: int): TetrisField =
+proc new_field*(columns, rows, cell_size: int, seed: int64): TetrisField =
   result = new TetrisField
+  result.rng = init_rand(seed)
   result.columns = columns
   result.rows = rows
   result.cell_size = cell_size
   result.cells = false.repeat(columns).repeat(rows)
-  result.current_piece = pick_random_piece()
+  result.current_piece = pick_random_piece(result.rng)
   result.current_piece_y = 1
   result.current_piece_x = 5
   result.new_piece = true
@@ -121,8 +121,8 @@ proc draw*(f: TetrisField; x, y: int) =
           )
 
 proc check_piece_collision*(f: TetrisField; p: Piece; x, y: int): bool =
-  for px in 0..3:
-    for py in 0..3:
+  for py in countdown(3, 0):
+    for px in 0..3:
       let fx = (px - 2) + x
       let fy = (py - 2) + y
 
@@ -185,7 +185,7 @@ proc check_valid_pos*(f: TetrisField; p: Piece; x, y: int): bool =
 
   return true
 
-proc pick_random_piece(): Piece =
+proc pick_random_piece(rng: var Rand): Piece =
   let PieceL1 = Piece(type_hint: L, form: [[false, false, false, false], [false, false, false, true], [false, true, true, true], [false, false, false, false]])
   let PieceL2 = Piece(type_hint: L, form: [[false, false, false, false], [false, true, true, true], [false, false, false, true], [false, false, false, false]])
   let PieceZ1 = Piece(type_hint: Z, form: [[false, false, false, false], [false, true, false, false], [false, true, true, false], [false, false, true, false]])
@@ -204,7 +204,7 @@ proc pick_random_piece(): Piece =
     PieceQ
   ]
 
-  result = PIECES[rand(PIECES.len - 1)].make_copy
+  result = PIECES[rng.rand(PIECES.len - 1)].make_copy
 
 proc merge_piece(f: TetrisField) =
   if f.current_piece != nil:
@@ -212,7 +212,7 @@ proc merge_piece(f: TetrisField) =
       for py in 0..3:
         let fx = (px - 2) + f.current_piece_x
         let fy = (py - 2) + f.current_piece_y
-        if f.current_piece.form[py][px]:
+        if f.current_piece.form[py][px] and fy >= 0:
           f.cells[fy][fx] = true
 
 proc score_lines(f: TetrisField): int =
@@ -260,7 +260,7 @@ proc slide*(f: TetrisField) =
     f.merge_piece()
     f.score += f.score_lines()
     f.score += f.current_piece.relevance
-    f.current_piece = pick_random_piece()
+    f.current_piece = pick_random_piece(f.rng)
     f.current_piece_y = 1
     f.current_piece_x = 5
     f.new_piece = true
@@ -295,7 +295,7 @@ proc reset*(f: TetrisField) =
     for r in 0..<f.rows:
       f.cells[r][c] = false
 
-  f.current_piece = pick_random_piece()
+  f.current_piece = pick_random_piece(f.rng)
   f.current_piece_y = 1
   f.current_piece_x = 5
   f.new_piece = true
