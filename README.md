@@ -2,20 +2,20 @@
 
 This small project of mine, which was developed during some free-time in 2018, involved the creation of a very simple automatic Tetris playing algorithm, which gets optimized through a genetic algorithm.
 
+[![Animated demo](assets/demo.gif)](assets/demo.gif)
+
 The code is written in [Nim](https://nim-lang.org/), as a way to play around with the language.
 
 ## Features and limitations
 The Tetris game that I implemented is very basic.
 For instance not all moves are supported: the pieces may only fall straight without late translations or rotations.
-Also the "next piece" mechanic is not handled, i.e. there is no way of knowing which random piece will follow after the current one is fully dropped. Finally, most importantly and very embarrassingly, the core Tetris scoring mechanic for *tetrises* is not implemented.
+Also the "next piece" mechanic is not handled, i.e. there is no way of knowing which random piece will follow after the current one is fully dropped.
 
 These limitations actually make the game (from the AI perspective) more difficult to master, and make it so that the AI objective is to generically survive as long as possible in the playing field.
 
 Nevertheless, the project features a couple of cool things:
 - realtime/fast-forward view (toggle with `T` for *Turbo*) of the fittest individual playing a match;
 - parallel background evaluation of population individuals, exploiting all the available CPU cores.
-
-[![Animated demo](assets/demo.gif)](assets/demo.gif)
 
 ## Automatic playing algorithm workings
 
@@ -33,7 +33,7 @@ A Tetris board is evaluated by running it through a set of metrics, for instance
 Then, with the addition of a set of weighting and biasing coefficients, a final score is obtained. The set of coefficients is chosen to be the genome for the genetic optimization that is performed.
 
 ### Genetic optimization
-There are 14 coefficients to optimize, with the aim (fitness function) being obtaining the highest possible score in the game. The genetic algorithm crossbreeds the genomes by performing two random cuts, and mutates them by adding or multiplying a random value to some randomly chosen coefficient(s).
+There are 17 coefficients to optimize, with the aim (fitness function) being obtaining the highest possible score in the game. The genetic algorithm crossbreeds the genomes by performing two random cuts, and mutates them by adding or multiplying a random value to some randomly chosen coefficient(s).
 
 ## Compiling and running
 You will need to [install Nim and Nimble](https://nim-lang.org/install.html), then to build and launch the project in release mode you can run:
@@ -42,3 +42,9 @@ You will need to [install Nim and Nimble](https://nim-lang.org/install.html), th
 $ nimble install nimraylib_now
 $ nim c -r -d:release --threads:on autotetris.nim
 ```
+
+## Possible improvements
+- Optimize the code, specifically scenario evaluation (which is a *very hot* code path) and general field handling.
+- Also look into cache efficiency (which is likely quite bad at the moment).
+- Address the limitations presented at the beginning.
+- The genetic algorithm might be better tuned (for instance in the number of individuals per generation, mating pool generation details, mutation rates, ...).
